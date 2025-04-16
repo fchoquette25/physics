@@ -1,0 +1,123 @@
+let colorlist = ['#e6194b', '#3cb44b', '#ffe119', '#4363d8', '#f58231', '#911eb4', '#46f0f0', '#f032e6', '#bcf60c', '#fabebe', '#008080', '#e6beff', '#9a6324', '#fffac8', '#800000', '#aaffc3', '#808000', '#ffd8b1', '#000075', '#808080', '#ffffff', '#000000']
+
+let movers = []
+let G = 0.1
+let wind = 0
+let gusting = false
+
+function setup() {
+  createCanvas(400, 400)
+  for (let i = 0; i < 10; i++) {
+    movers.push(
+      new Mover(random(width), random(height), random(-1, 1), random(-1, 1), 15, random(colorlist))
+    )
+  }
+  ellipseMode(RADIUS)
+}
+
+function draw() {
+  background(220)
+
+  for (let mover of movers) {
+    mover.update()
+  }
+
+  for (let i = 0; i < movers.length; i++) {
+    for (let j = i + 1; j < movers.length; j++) {
+      movers[i].checkCollision(movers[j])
+    }
+  }
+}
+
+function keyPressed() {
+  if (key === ' ') {
+    gusting = true
+    wind = random(-1, 1)
+  }
+}
+
+function keyReleased() {
+  if (key === ' ') {
+    gusting = false
+    wind = 0
+  }
+}
+
+class Mover {
+  constructor(x, y, vx, vy, r, c) {
+    this.position = createVector(x, y)
+    this.velocity = createVector(vx, vy)
+    this.acceleration = createVector(0, 0)
+    this.r = r
+    this.c = c
+  }
+
+  applyForce(force) {
+    this.acceleration.add(force)
+  }
+
+  update() {
+    this.applyGravity()
+    if (gusting) {
+      this.applyWind()
+    }
+
+    this.velocity.add(this.acceleration)
+    this.position.add(this.velocity)
+    this.acceleration.mult(0) // Reset acceleration
+
+    this.containWithinWindow()
+    this.draw()
+  }
+
+  draw() {
+    fill(this.c)
+    noStroke()
+    circle(this.position.x, this.position.y, this.r)
+  }
+
+  applyGravity() {
+    let gravity = createVector(0, G)
+    this.applyForce(gravity)
+  }
+
+  applyWind() {
+    let windForce = createVector(wind, 0)
+    this.applyForce(windForce)
+  }
+
+  containWithinWindow() {
+    if (this.position.x < this.r) {
+      this.position.x = this.r
+      this.velocity.x *= -1
+    }
+    if (this.position.x > width - this.r) {
+      this.position.x = width - this.r
+      this.velocity.x *= -1
+    }
+    if (this.position.y < this.r) {
+      this.position.y = this.r
+      this.velocity.y *= -1
+    }
+    if (this.position.y > height - this.r) {
+      this.position.y = height - this.r
+      this.velocity.y *= -1
+    }
+  }
+
+  checkCollision(other) {
+    let delta = p5.Vector.sub(other.position, this.position)
+    let distance = delta.mag()
+    let minDist = this.r + other.r
+
+    if (distance < minDist) {
+      let angle = delta.heading()
+      let target = p5.Vector.add(this.position, p5.Vector.fromAngle(angle).mult(minDist))
+      let ax = (target.x - other.position.x) * 0.05
+      let ay = (target.y - other.position.y) * 0.05
+
+      this.velocity.sub(createVector(ax, ay))
+      other.velocity.add(createVector(ax, ay))
+    }
+  }
+}
